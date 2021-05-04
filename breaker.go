@@ -10,7 +10,7 @@ import (
 
 var (
 	// ErrBreakerOpen is returned when the breaker is open
-	ErrBreakerOpen    = errors.New("breaker open")
+	ErrBreakerOpen = errors.New("breaker open")
 	// ErrBreakerStopped is returned when a breaker has been disabled
 	ErrBreakerStopped = errors.New("breaker stopped")
 )
@@ -102,9 +102,9 @@ func (b *breaker) run() {
 		case res := <-b.genOutcomes:
 			switch {
 			case res.gen() != genState.Gen():
-				continue // drop old gen messages
+				continue // drop messages not from this gen
 
-			case res.pass(): // asPass
+			case res.pass():
 				passes++
 				if passes >= b.resetThreshold {
 					// half open -> closed
@@ -112,7 +112,7 @@ func (b *breaker) run() {
 					state = Closed
 				}
 
-			default: // asFail
+			default: // fail
 				fails++
 				lastFail = time.Now()
 
@@ -131,7 +131,7 @@ func (b *breaker) run() {
 				// start the resetTimer anew
 				if !resetTimer.Stop() { // drain if need be
 					select {
-					case <-resetTimer.C:
+					case <-resetCh:
 					default:
 					}
 				}
@@ -219,7 +219,7 @@ func (g GenState) Gen() uint64 {
 	return uint64(g) >> 2
 }
 
-// Next increments the generation and updates the state
+// Next increments the generation and updates the state; more than 2^62 generations will overflow and wrap
 func (g GenState) Next(state State) GenState {
 	return GenState(g.Gen()+1)<<2 | GenState(state)
 }
