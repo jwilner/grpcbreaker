@@ -1,0 +1,12 @@
+syntax = 'proto3';
+
+package pbtest;
+
+option go_package = "github.com/jwilner/grpcbreaker/pbtest;pbtest";
+
+service SvcA {
+  rpc Get(GetRequest) returns (GetResponse);
+}
+
+message GetRequest{}
+message GetResponse{}
