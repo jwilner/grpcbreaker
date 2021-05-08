@@ -15,9 +15,7 @@ func New(ctx context.Context, g *GlobalOptionSet, optionSets ...*OptionSet) *Bre
 	defaults := []Option{
 		Predicate(func(error) bool { return true }),
 	}
-
 	monitorCh := make(chan Event, 100)
-
 	bc := newCache(deps{ctx.Done(), monitorCh}, defaults, g, optionSets...)
 
 	interceptor := func(
@@ -28,11 +26,10 @@ func New(ctx context.Context, g *GlobalOptionSet, optionSets ...*OptionSet) *Bre
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		return bc.
-			resolve(method, opts).
-			call(ctx, func(ctx context.Context) error {
-				return invoker(ctx, method, req, reply, cc, opts...)
-			})
+		b := bc.resolve(method, opts)
+		return b.call(ctx, func(ctx context.Context) error {
+			return invoker(ctx, method, req, reply, cc, opts...)
+		})
 	}
 
 	return &Breaker{interceptor, monitorCh}

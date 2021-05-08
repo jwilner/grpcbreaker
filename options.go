@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type GlobalOptionSet struct {
@@ -58,10 +57,6 @@ func CallSite(name string, opts ...Option) *CallOption {
 }
 
 func Method(name string, opts ...Option) *OptionSet {
-	if protoreflect.FullName(name).IsValid() {
-		panic("nope not a method Name")
-	}
-
 	return &OptionSet{Key{BreakerMethod, name}, opts}
 }
 

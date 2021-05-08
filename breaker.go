@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync/atomic"
 	"time"
 )
@@ -39,6 +40,10 @@ type breaker struct {
 	genOutcomes chan genOutcome
 }
 
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+}
+
 func (b *breaker) call(ctx context.Context, circuit func(ctx context.Context) error) error {
 	genState := GenState(atomic.LoadUint64(&b.genState))
 
@@ -57,23 +62,20 @@ func (b *breaker) call(ctx context.Context, circuit func(ctx context.Context) er
 	}
 
 	err := circuit(ctx)
-
-	var outcome genOutcome
 	switch {
-	case b.predicate(err):
-		outcome = genState.asFail()
-	case state == HalfOpen:
-		outcome = genState.asPass()
-	}
-
-	if outcome != 0 {
+	case err != nil && b.predicate(err):
 		select {
-		case b.genOutcomes <- outcome:
+		case b.genOutcomes <- genState.asFail():
+		case <-b.closeCh:
+		case <-ctx.Done():
+		}
+	case state == HalfOpen:
+		select {
+		case b.genOutcomes <- genState.asPass():
 		case <-b.closeCh:
 		case <-ctx.Done():
 		}
 	}
-
 	return err
 }
 
